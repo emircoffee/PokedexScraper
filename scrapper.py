@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from typing import List, NamedTuple
 import csv
 import json
+import itertools
 
 class Pokemon(NamedTuple):
     dex_num: int
@@ -31,8 +32,7 @@ class Pokemon(NamedTuple):
     egg_groups: List[str]
     gender: List[str]
     egg_cycles: str
-    evo_method: List[str]
-    evo_line: List[str]
+    evo_data: List[str]
     moves_collection: dict[dict[NamedTuple]]
 # pokemon object that holds all the data
 
@@ -70,7 +70,8 @@ pokemon_rows = soup.find_all("table", id="pokedex")[0].find_all("tbody")[0].find
 # finds table element with id of pokedex, finds the body of that table, and gets the rows of that body
 
 scraper_counter = 0
-for pokemon in pokemon_rows[0:1192]:
+for pokemon in pokemon_rows[0:1192]: #1192
+    many_forms = False
     # loop that goes through all the pokemon in the database
     pokemon_data = pokemon.find_all("td")
     dex_num = pokemon_data[0]['data-sort-value']
@@ -80,6 +81,7 @@ for pokemon in pokemon_rows[0:1192]:
     name = pokemon_data[1].find_all("a")[0].getText()
     if pokemon_data[1].find_all("small"):
         name = pokemon_data[1].find_all("small")[0].getText()
+        many_forms = True
     # gets the name of the pokemon and if it's an alternate form, uses the name of the alternate form instead of reapeating the name
 
     url_extension = pokemon_data[1].find_all("a")[0]["href"]
@@ -112,7 +114,10 @@ for pokemon in pokemon_rows[0:1192]:
     soup_detail = BeautifulSoup(page_detail_html, "html.parser")
     # creates beautifulsoup parser
 
-    render = soup_detail.find_all("div", {"class": "sv-tabs-panel-list"})[0].find_all("a")[0]["href"]
+    if (many_forms):
+        render = soup_detail.find_all("div", {"class": "sv-tabs-panel-list"})[0].find_all("a")[28]["href"]
+    else:
+        render = soup_detail.find_all("div", {"class": "sv-tabs-panel-list"})[0].find_all("a")[0]["href"]
 
     pokemon_detailed = soup_detail.find_all("table", {"class":"vitals-table"})[0].find_all("tbody")[0].find_all("tr")
     # finds table element with pokemon's vitals, finds the body of that table, and gets the rows of that body
@@ -135,21 +140,46 @@ for pokemon in pokemon_rows[0:1192]:
     except:
         print("Zygarde lmao")
 
+
+    def check_int(s):
+        if s[0] in ('-', '+'):
+            return s[1:].isdigit()
+        return s.isdigit()
+
     pdex_entry = []
     try:
-        pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class" : "resp-scroll"})[2].find_all("tr")[0].find_all("td")[0].getText())
-        pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class" : "resp-scroll"})[2].find_all("tr")[1].find_all("td")[0].getText())
-        # grabs first pokedex entry of each pokemon's page
-    except:
-        try:
-            pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[3].find_all("tr")[0].find_all("td")[0].getText())
-            pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[3].find_all("tr")[1].find_all("td")[0].getText())
-        except:
+        if many_forms:
+            pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[4].find_all("tr")[0].find_all("td")[0].getText())
+            pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[4].find_all("tr")[1].find_all("td")[0].getText())
+        else:
             try:
-                pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[4].find_all("tr")[0].find_all("td")[0].getText())
-                pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[4].find_all("tr")[1].find_all("td")[0].getText())
+                pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[2].find_all("tr")[0].find_all("td")[0].getText())
+                pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[2].find_all("tr")[1].find_all("td")[0].getText())
+                if str(hp) == pdex_entry[0]:
+                    try:
+                        pdex_entry = []
+                        pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[3].find_all("tr")[0].find_all("td")[0].getText())
+                        pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[3].find_all("tr")[1].find_all("td")[0].getText())
+                    except:
+                        try:
+                            pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[4].find_all("tr")[0].find_all("td")[0].getText())
+                            pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[4].find_all("tr")[1].find_all("td")[0].getText())
+                        except:
+                            try:
+                                pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[5].find_all("tr")[0].find_all("td")[0].getText())
+                                pdex_entry.append(soup_detail.find_all("main")[0].find_all("div", {"class": "resp-scroll"})[5].find_all("tr")[1].find_all("td")[0].getText())
+                            except:
+                                pdex_entry = []
+                                pdex_entry.append("Unable to retrieve Pokedex Entry")
             except:
-                print("Failed pokedex entry")
+                pdex_entry = []
+                pdex_entry.append("Unable to retrieve Pokedex Entry")
+    except:
+        pdex_entry = []
+        pdex_entry.append("Unable to retrieve Pokedex Entry")
+    if(check_int(pdex_entry[0])):
+        pdex_entry = []
+        pdex_entry.append("Unable to retrieve Pokedex Entry")
     # attempts to grab pokedex entry as it is finicky for parts of site
 
     training_table = soup_detail.find_all("table", {"class":"vitals-table"})[1].find_all("tbody")[0].find_all("tr")
@@ -184,9 +214,9 @@ for pokemon in pokemon_rows[0:1192]:
         evo_line = []
         for fut_evo in evos:
             evo_line.append(fut_evo.find_all("a")[0].getText())
+        evo_data = [x for x in itertools.chain.from_iterable(itertools.zip_longest(evo_line,evo_method)) if x]
     except:
-        evo_method = []
-        evo_line = []
+        evo_data = []
     # handles scraping all evolutions and their evolve methods
 
     moves_list = []
@@ -230,9 +260,13 @@ for pokemon in pokemon_rows[0:1192]:
                     "move_type": move_type, "move_cat": move_cat, "move_power": move_power, "move_accuracy": move_accuracy
                 }
 
-                moves_collection[move_name] = moves_data
+                if (move_name == ""):
+                    move_name = ""
+                    # Do nothing
+                else:
+                    moves_collection[move_name] = moves_data
         except:
-            break
+            move_tables = soup_detail.find_all("table", {"class": "data-table"})
 
     assigned_pokemon = Pokemon(
         dex_num = int(dex_num),
@@ -261,8 +295,7 @@ for pokemon in pokemon_rows[0:1192]:
         egg_groups = egg_groups,
         gender = gender,
         egg_cycles = egg_cycles,
-        evo_method = evo_method,
-        evo_line = evo_line,
+        evo_data = evo_data,
         moves_collection = moves_collection
     )
 
@@ -301,8 +334,7 @@ for pokemon in pokemon_rows[0:1192]:
             "gender": gender,
             "egg_groups": egg_groups,
             "egg_cycles": egg_cycles,
-            "evo_line": evo_line,
-            "evo_method": evo_method,
+            "evo_data": evo_data,
             "moves_collection": moves_collection
             }
         }
